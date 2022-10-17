@@ -3,4 +3,4 @@
 
 # Crash Buddy
 
-This is the firmware for the Crash Buddy a crash detection helmet.
+This is the firmware for the Crash Buddy crash detection helmet.
