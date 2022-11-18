@@ -124,6 +124,7 @@ void create_characteristics(BLEService* pService) {
   pStatusCharacteristic = pService->createCharacteristic(
     CHARACTERISTIC_UUID_STATUS,
     BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+  pStatusCharacteristic->addDescriptor(new BLE2902());    
 
   pStatusCharacteristic->setValue((uint8_t*) &statusValue, sizeof(statusValue));
 
@@ -131,6 +132,7 @@ void create_characteristics(BLEService* pService) {
   pDataAvailableCharacteristic = pService->createCharacteristic(
     CHARACTERISTIC_UUID_DATA_AVAILABLE,
     BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+  pDataAvailableCharacteristic->addDescriptor(new BLE2902());    
 
   uint32_t dataAvailableValue = 0;
   pDataAvailableCharacteristic->setValue((uint8_t*) &dataAvailableValue, sizeof(dataAvailableValue));
@@ -139,6 +141,8 @@ void create_characteristics(BLEService* pService) {
   pDataSizeCharacteristic = pService->createCharacteristic(
     CHARACTERISTIC_UUID_DATA_SIZE,
     BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+  pDataSizeCharacteristic->addDescriptor(new BLE2902());    
+
 
   uint32_t dataSizeValue = TOTAL_CRASH_DATAPOINTS;  
   pDataSizeCharacteristic->setValue((uint8_t*)&dataSizeValue, sizeof(dataSizeValue));
@@ -147,6 +151,7 @@ void create_characteristics(BLEService* pService) {
   pSetThreshholdCharacteristic = pService->createCharacteristic(
     CHARACTERISTIC_UUID_SET_THRESHHOLD,
     BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
+  pSetThreshholdCharacteristic->addDescriptor(new BLE2902());    
 
   pSetThreshholdCharacteristic->setCallbacks(new MyCallbacks());
 
@@ -158,6 +163,7 @@ void create_characteristics(BLEService* pService) {
   pSetEnableDebugCharacteristic = pService->createCharacteristic(
     CHARACTERISTIC_UUID_SET_ENABLE_DEBUG,
     BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
+  pSetEnableDebugCharacteristic->addDescriptor(new BLE2902());    
 
   pSetEnableDebugCharacteristic->setCallbacks(new MyCallbacks());
 
@@ -168,6 +174,7 @@ void create_characteristics(BLEService* pService) {
   pCrashDataCharSizeCharacteristic = pService->createCharacteristic(
     CHARACTERISTIC_UUID_CRASH_DATA_CHAR_SIZE,
     BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+  pCrashDataCharSizeCharacteristic->addDescriptor(new BLE2902());    
 
   uint32_t dataCharSizeValue = DATA_POINTS_PER_CHAR;
   pCrashDataCharSizeCharacteristic->setValue((uint8_t*)&dataCharSizeValue, sizeof(dataCharSizeValue));
@@ -176,6 +183,7 @@ void create_characteristics(BLEService* pService) {
   pCrashDataCharsCharacteristic = pService->createCharacteristic(
     CHARACTERISTIC_UUID_DATA_CHARS,
     BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+  pCrashDataCharsCharacteristic->addDescriptor(new BLE2902());
 
   uint32_t dataCharsValue = CRASH_DATA_CHARS;
   pCrashDataCharsCharacteristic->setValue((uint8_t*)&dataCharsValue, sizeof(dataCharsValue));
@@ -188,6 +196,8 @@ void create_characteristics(BLEService* pService) {
     pCrashDataCharacteristics[i] = pService->createCharacteristic(
       uuid,
       BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+    pCrashDataCharacteristics[i]->addDescriptor(new BLE2902());
+
   }
 }
 
@@ -215,7 +225,7 @@ void setup() {
   // Create the BLE Service
   BLEService* pService = pServer->createService(
     BLEUUID::fromString(SERVICE_UUID),
-    UUID_COUNT * 2  // each characteristic gets a value char and a descriptor char so 2 per UUID
+    UUID_COUNT * 3  // each characteristic gets a value char and a descriptor char so 2 per UUID
   );
 
   // Initialize all the characteristics
