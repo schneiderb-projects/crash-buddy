@@ -14,16 +14,19 @@ volatile uint16_t total_new_data = 0;
 bool crash_detected = false;
 
 //BLE Gatt Server UUIDS, all letters must be lowercase
-#define DEVICE_UUID "0000-b5a3-f393-e0a9-e50e24dcca9e" // last 14 bytes of char uuid
+#define PREAMBLE "0998"
+#define DEVICE_UUID  "-1280-49a1-bacf-965209262e66" // last 14 bytes of char uuid
+//#define DEVICE_UUID  "-1280-49A1-BACF-965209262E66" // last 14 bytes of char uuid
 
 //UUIDS for service and characteristics
-#define SERVICE_UUID "0000" DEVICE_UUID
-#define CHARACTERISTIC_UUID_STATUS "0001" DEVICE_UUID
-#define CHARACTERISTIC_UUID_DATA_AVAILABLE "0002" DEVICE_UUID
-#define CHARACTERISTIC_UUID_DATA_SIZE "0003" DEVICE_UUID
-#define CHARACTERISTIC_UUID_SET_THRESHHOLD "0004" DEVICE_UUID
-#define CHARACTERISTIC_UUID_SET_ENABLE_DEBUG "0005" DEVICE_UUID
-#define CHARACTERISTIC_UUID_CRASH_DATA_CHAR_SIZE "0006" DEVICE_UUID
+#define SERVICE_UUID PREAMBLE "0000" DEVICE_UUID
+#define CHARACTERISTIC_UUID_STATUS PREAMBLE "0001" DEVICE_UUID
+#define CHARACTERISTIC_UUID_SET_THRESHHOLD PREAMBLE "0003" DEVICE_UUID
+#define CHARACTERISTIC_UUID_DATA_AVAILABLE PREAMBLE "0004" DEVICE_UUID
+#define CHARACTERISTIC_UUID_DATA_CHARS PREAMBLE "0005" DEVICE_UUID
+#define CHARACTERISTIC_UUID_DATA_SIZE PREAMBLE "0006" DEVICE_UUID
+#define CHARACTERISTIC_UUID_SET_ENABLE_DEBUG PREAMBLE "0007" DEVICE_UUID
+#define CHARACTERISTIC_UUID_CRASH_DATA_CHAR_SIZE PREAMBLE "0008" DEVICE_UUID
 
 //crash data characteristics: must edit these by hand to change the number of datapoints sent
 #pragma pack(1) // prevent compiler adding padding for 32 bit alignment
@@ -39,7 +42,7 @@ struct data_point {  // total size = 6 bytes
 #define DATA_POINTS_PER_CHAR (MAX_BYTES_PER_CHAR / SIZEOF_DATA_POINT)  // Datapoints stored in one characteristic
 #define CRASH_DATA_CHARS  (TOTAL_CRASH_DATAPOINTS / MAX_BYTES_PER_CHAR + 2) // number of crash data characteristics
 
-#define UUID_COUNT (7 + CRASH_DATA_CHARS)
+#define UUID_COUNT (9 + CRASH_DATA_CHARS)
 
 //BLE GATT server
 BLEServer* pServer = NULL;
@@ -53,6 +56,7 @@ BLECharacteristic* pDataSizeCharacteristic;
 BLECharacteristic* pSetThreshholdCharacteristic;
 BLECharacteristic* pSetEnableDebugCharacteristic;
 BLECharacteristic* pCrashDataCharSizeCharacteristic;
+BLECharacteristic* pCrashDataCharsCharacteristic;
 BLECharacteristic* pCrashDataCharacteristics[CRASH_DATA_CHARS];
 
 //BLE GATT characteristic values
@@ -168,10 +172,18 @@ void create_characteristics(BLEService* pService) {
   uint32_t dataCharSizeValue = DATA_POINTS_PER_CHAR;
   pCrashDataCharSizeCharacteristic->setValue((uint8_t*)&dataCharSizeValue, sizeof(dataCharSizeValue));
 
+  // crash data chars
+  pCrashDataCharsCharacteristic = pService->createCharacteristic(
+    CHARACTERISTIC_UUID_DATA_CHARS,
+    BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+
+  uint32_t dataCharsValue = CRASH_DATA_CHARS;
+  pCrashDataCharsCharacteristic->setValue((uint8_t*)&dataCharsValue, sizeof(dataCharsValue));
+
   // crash data characteristics
   char uuid[37] = { 0 };
   for (int i = 0; i < CRASH_DATA_CHARS; i++) {
-    sprintf(uuid, "%04X%s", CHARACTERISTIC_UUID_CRASH_DATA_INITIAL + i, DEVICE_UUID);
+    sprintf(uuid, "%s%04X%s", PREAMBLE, CHARACTERISTIC_UUID_CRASH_DATA_INITIAL + i, DEVICE_UUID);
     // crash data char
     pCrashDataCharacteristics[i] = pService->createCharacteristic(
       uuid,
@@ -183,6 +195,8 @@ void create_characteristics(BLEService* pService) {
 void setup() {
   Serial.begin(115200);
 
+  Serial.print("Service UUID: ");
+  Serial.println(SERVICE_UUID);
   #ifdef USE_FAKE_DATA
   //enable a timer interrupt in place of the pin interrupt when using an actual sensor
   timer = timerBegin(0, 80, true);
@@ -210,6 +224,10 @@ void setup() {
   // Start the service
   pService->start();
 
+  pServer->getAdvertising()->addServiceUUID(SERVICE_UUID);
+  pServer->getAdvertising()->setScanResponse(false);
+  pServer->getAdvertising()->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+
   // Start advertising
   pServer->getAdvertising()->start();
   Serial.println("Ready for connection...");
@@ -232,6 +250,7 @@ void sensor_read() {
     rb.push(&temp_data);
     temp_data.time++;
     temp_data.value = (temp_data.value + 1) % 20;
+    new_data += 1;
 
 #endif
     total_new_data += new_data;
