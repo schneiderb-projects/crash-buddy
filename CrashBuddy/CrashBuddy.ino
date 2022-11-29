@@ -12,7 +12,7 @@ Crash Buddy: impact detection
 
 //sensor reading/crash detection related variables
 //#define DEFAULT_THRESHHOLD 0
-#define DEFAULT_THRESHHOLD 15
+#define DEFAULT_THRESHHOLD 100
 volatile uint16_t new_data = 0;
 volatile uint16_t total_new_data = 0;
 bool crash_detected = false;
@@ -118,10 +118,11 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       Serial.println("*********");
 
       if (pCharacteristic->getUUID().toString() == CHARACTERISTIC_UUID_SET_THRESHHOLD) {
-        // threshholdValue = 0;
-        // threshholdValue = pCharacteristic->getData()[4];
-        // Serial.print(threshholdValue); Serial.print(" ");
-        // Serial.print("\nNew Threshhold: "); Serial.println(threshholdValue);
+        threshholdValue = 0;
+        threshholdValue += pCharacteristic->getData()[3]; 
+        threshholdValue += pCharacteristic->getData()[2] << 8; 
+
+        Serial.print("New threshhold: "); Serial.println(threshholdValue);
       }
 
       else if (pCharacteristic->getUUID().toString() == CHARACTERISTIC_UUID_SET_ENABLE_DEBUG) {
@@ -293,7 +294,7 @@ void sensor_read() {
     }
 
     new_data += 1;
-    total_new_data += new_data;
+    total_new_data += 1;
     last_read = millis();
   }
 #endif
@@ -316,9 +317,9 @@ void crash_detect() {
     temp = (struct data_point*)rb.get_at_index(TOTAL_CRASH_DATAPOINTS - new_data + i);
     if (temp->value >= threshholdValue && !crash_detected) {
       crash_detected = 1;
-      total_new_data = 0;
     }
   }
+  total_new_data = 0;
   new_data = 0;
 }
 
@@ -391,7 +392,9 @@ void loop() {
         Serial.println("Crash Detected!");
       }
     }
-
+    // if (crash_detected && !(total_new_data > (TOTAL_CRASH_DATAPOINTS / 2))) {
+    //   Serial.print("crash_detected: "); Serial.print(crash_detected); Serial.print("total_new_data: "); Serial.println(total_new_data);
+    // }
     if (crash_detected && (total_new_data > (TOTAL_CRASH_DATAPOINTS / 2))) {
       fill_data_characteristics();
       ble_notify_new_data();
